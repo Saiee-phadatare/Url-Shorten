@@ -1,0 +1,354 @@
+index.js
+const express = require("express");
+const path = require("path");
+const cookieParser = require("cookie-parser");
+//importinf functions...
+const { connectmongodb } = require("./connection");
+const url = require("./modle/url"); 
+const { restrictToLoggedInUserOnly, checkAuth } = require("./middleware/auth");
+//importing routes....
+const urlRoutes = require("./routes/url");
+const staticRoute = require("./routes/staticRouter");
+const user = require("./routes/user");
+const app = express();
+const PORT = 1000;
+// Middleware
+app.use(express.json());//to convert incoming json data to js object
+app.use(express.urlencoded({extended : false}));//to convert incoming form data to js object
+app.use(cookieParser());
+// Connect to MongoDB
+connectmongodb("mongodb://localhost:27017/ShortenUrl")
+    .then(() => console.log("MongoDB connected..."))
+    .catch((err) => console.log("Error occurred", err));
+// Serve static files from 'public' folder
+app.use(express.static(path.join(__dirname, 'public'))); 
+// Seting ejs
+app.set("view engine", "ejs");
+app.set("views", path.resolve("./views"));
+// Routes
+app.use('/url', restrictToLoggedInUserOnly, urlRoutes);
+app.use('/',checkAuth, staticRoute);
+app.use('/user',user);
+// Redirect Handler
+app.get("/:shortId", async (req, res) => { 
+    const { shortId } = req.params;
+    try {
+        const urlEntry = await url.findOneAndUpdate(
+            { shortId },
+            { $push: { visitHistory: Date.now() } }, 
+            { new: true } //to send the updated data..
+        );
+        if (!urlEntry) {
+            return res.status(404).json({ msg: "URL not found" });
+        }
+        res.redirect(urlEntry.redirectUrl); 
+    } catch (error) {
+        console.error("Error in URL redirection:", error);
+        res.status(500).json({ msg: "Internal Server Error" });
+    }
+});
+app.listen(PORT, () => console.log(`Server started at port: ${PORT}...`));
+
+
+
+connection.js
+const mongoose = require("mongoose");
+async function connectmongodb(url){
+   return mongoose.connect(url);
+}
+module.exports = {
+    connectmongodb,
+}
+
+Folder : - controller
+url.js
+const shortid = require("shortid"); 
+const Url = require("../modle/url"); 
+async function handleShortUrl(req, res) {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ msg: "Please enter a URL..." });
+    const shortID = shortid();
+    await Url.create({
+        shortId: shortID,
+        redirecturl: url,
+        visitHistory: [],
+        createdBy : req.user._id,
+    });
+    //return res.render("home", {id: shortID,});
+    const allUrls = await Url.find({}).sort({ _id: -1 }); // Latest first
+    return res.render("home", { urls: allUrls });
+}
+module.exports = { handleShortUrl };
+
+
+user.js
+const User = require("../modle/user");
+const { v4: uuidv4 } = require("uuid");
+const { setUser } = require("../service/auth");
+async function handleUserSignUp(req,res){
+    const { name, email, password } = req.body;
+    await User.create({
+        name,
+        email,
+        password,
+    });
+    return res.redirect("/");
+}
+async function  handleUserLogin(req,res){
+    const { email, password } = req.body;
+    const user = await User.findOne({
+        email,
+        password,
+    });
+    if(!user) return res.render("login" , {
+        error : "invalid user name or password..."
+    });
+    // const sessionId = uuidv4();
+    // setUser(sessionId, user);
+    // res.cookie("uid" , sessionId)
+    const token = setUser(user);
+    console.log("Generated Token:", token); // Debugging
+    res.cookie("uid", token, { httpOnly: true }); // Ensuring it's stored properly
+    return res.redirect("/");
+}
+module.exports = {
+    handleUserSignUp,
+    handleUserLogin
+}
+
+
+Folder : - middleware
+auth.js
+const { getUser } = require("../service/auth");
+async function restrictToLoggedInUserOnly(req, res, next) {
+    const userUid = req.cookies?.uid;
+    console.log("User UID:", userUid);
+    if (!userUid) {
+        console.log("❌ No UID found. Redirecting to login...");
+        return res.redirect("/login");
+    }
+    const user = getUser(userUid);
+    console.log("User found:", user);
+    if (!user) {
+        console.log("❌ Invalid session. Redirecting to login...");
+        return res.redirect("/login");
+    }
+    console.log("✅ User authenticated:", user.name);
+    req.user = user;
+    next();
+}
+async function checkAuth(req, res, next) {
+    const userUid = req.cookies?.uid;
+    const user = getUser(userUid);
+    req.user = user;
+    next();
+}
+module.exports = {
+    restrictToLoggedInUserOnly,
+    checkAuth,
+}
+
+Folder : - modle
+url.js
+const mongoose = require("mongoose");
+const urlSchema = new mongoose.Schema({
+    shortId: { 
+        type: String, 
+        required: true, 
+        unique: true 
+    },
+    redirecturl: { 
+        type: String, 
+        required: true 
+    },
+    visitHistory: { 
+        type: [Date], 
+        default: [] 
+    },
+    createdBy : {
+        type : mongoose.Schema.Types.ObjectId,
+        ref : 'users',
+    }
+});
+const url = mongoose.model("url", urlSchema);
+module.exports = url;
+
+user.js
+const mongoose = require("mongoose");
+const userSchema = new mongoose.Schema({
+    name: { 
+        type: String, 
+        required: true, 
+        unique: true, 
+    },
+    email: { 
+        type: String, 
+        required: true,
+        unique: true, 
+    },
+    password: { 
+        type: String, 
+        required: true, 
+    },
+});
+const user = mongoose.model("user", userSchema);
+module.exports = user;
+
+
+Folder : -routes
+staticRouter.js
+const express = require("express");
+const url = require("../modle/url");
+const router = express.Router();
+router.get('/', async (req,res) =>{
+    if(!req.user) return res.redirect("/login");
+    const allurl = await url.find({ createdBy : req.user._id });//data of mongdb
+    return res.render("home",{ urls: allurl});
+})
+router.get('/signup', (req,res)=>{
+    res.render("signup");
+})
+router.get('/login', (req,res)=>{
+    res.render("login");
+})
+module.exports = router;
+
+
+url.js
+const express = require("express");
+const {handleShortUrl} = require("../controller/url"); 
+const router = express.Router();
+router.post('/', handleShortUrl);
+module.exports = router;
+
+user.js
+const express = require("express");
+const {handleUserSignUp , handleUserLogin} = require("../controller/user");
+const router = express.Router();
+router.post('/', handleUserSignUp );
+router.post('/login', handleUserLogin );
+module.exports = router;
+
+Folder : -service
+auth.js
+const jwt = require("jsonwebtoken");
+const secret = "SAI68E@E"
+//for jwt(stateless)
+function setUser(user){
+    return jwt.sign(
+    {
+        _id:user._id,
+        email: user.email,
+    },secret);
+}
+function getUser(token) {
+    if (!token) return null;
+    try {
+        return jwt.verify(token, secret);
+    } catch (error) {
+        console.error("JWT Verification Error:", error.message);
+        return null;
+    }
+}
+//for state auth
+// const sessionIdToUserMap = new Map();
+
+// function setUser(id, user){
+//     sessionIdToUserMap.set(id, user);
+// }
+// function getUser(id){
+//     return sessionIdToUserMap.get(id);
+// }
+module.exports = {
+    setUser,
+    getUser,
+}
+
+Folder : views
+home.ejs
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Page</title>
+    <link rel="stylesheet" href="/css/home.css">
+</head>
+<body>
+    <div class="container">
+    <h1>URL Shortener</h1>
+    
+    <div class="form-container">
+        <form method="POST" action="/url" class="form">
+            <label>Enter your original URL</label>
+            <input type="text" name="url" placeholder="http://example.com" required>
+            <button type="submit">Generate</button>
+        </form>
+    </div>
+
+    <% if(locals.urls) { %>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>S. No</th>
+                        <th>ShortID</th>
+                        <th>Redirect</th>
+                        <th>Clicks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% urls.forEach((url, index) => { %>
+                        <tr>
+                            <td><%= index + 1 %></td>
+                            <td><a href="/<%= url.shortId %>" target="_blank"><%= url.shortId %></a></td>
+                            <td><%= url.redirecturl %></a></td>
+                            <td><%= url.visitHistory.length %></td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    <% } %>
+</div>
+</div>
+</body>
+</html>
+
+
+
+login.ejs
+<div class="container">
+        <h1>Login</h1>
+        <form method="POST" action="/user/login">
+            <div class="input-group">
+                <label>Email</label>
+                <input type="email" name="email" required>
+            </div>
+            <div class="input-group">
+                <label>Password</label>
+                <input type="password" name="password" required>
+            </div>
+            <button type="submit">Login</button>
+        </form>
+    </div>
+
+signup.ejs
+ <div class="container">
+        <h1>Signup</h1>
+        <form method="POST" action="/user">
+            <div class="input-group">
+                <label>Name</label>
+                <input type="name" name="name" required>
+            </div>
+            <div class="input-group">
+                <label>Email</label>
+                <input type="email" name="email" required>
+            </div>
+            <div class="input-group">
+                <label>Password</label>
+                <input type="password" name="password" required>
+            </div>
+            <button type="submit">Login</button>
+        </form>
+    </div>
