@@ -1,0 +1,63 @@
+{
+	"info": {
+		"_postman_id": "335d7e55-2f01-4e26-99e4-5e620becb82a",
+		"name": "url-short",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "41984587"
+	},
+	"item": [
+		{
+			"name": "http://localhost:1000/WvQeVyo-S",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:1000/WvQeVyo-S",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "1000",
+					"path": [
+						"WvQeVyo-S"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "http://localhost:1000/url",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n    \"url\" : \"https://web.whatsapp.com/\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://localhost:1000/url",
+					"protocol": "http",
+					"host": [
+						"localhost"
+					],
+					"port": "1000",
+					"path": [
+						"url"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

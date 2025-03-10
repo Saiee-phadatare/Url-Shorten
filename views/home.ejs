@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Page</title>
+    <link rel="stylesheet" href="/css/home.css">
+</head>
+<body>
+    <div class="container">
+    <h1>URL Shortener</h1>
+    
+    <div class="form-container">
+        <form method="POST" action="/url" class="form">
+            <label>Enter your original URL</label>
+            <input type="text" name="url" placeholder="http://example.com" required>
+            <button type="submit">Generate</button>
+        </form>
+    </div>
+
+    <% if(locals.urls) { %>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th>S. No</th>
+                        <th>ShortID</th>
+                        <th>Redirect</th>
+                        <th>Clicks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <% urls.forEach((url, index) => { %>
+                        <tr>
+                            <td><%= index + 1 %></td>
+                            <td><a href="/<%= url.shortId %>" target="_blank"><%= url.shortId %></a></td>
+                            <td><%= url.redirecturl %></a></td>
+                            <td><%= url.visitHistory.length %></td>
+                        </tr>
+                    <% }) %>
+                </tbody>
+            </table>
+        </div>
+    <% } %>
+</div>
+</div>
+</body>
+</html>
+
