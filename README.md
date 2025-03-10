@@ -17,6 +17,6 @@ A simple **URL Shortener API** built using **Node.js, Express, and MongoDB**, al
 ## 📌 Deployment on Render
 This project is deployed on **Render**. You can access the API at: <a href="https://url-shorten-1-volr.onrender.com">https://url-shorten-1-volr.onrender.com</a>
 
-📬 Postman Collection
+## 📬 Deployment on Render
 You can test the API using Postman with the collection provided:
 🔗<b>Collection</b> : <a href="https://raw.githubusercontent.com/Saiee-phadatare/Url-Shorten/refs/heads/main/url-short.postman_collection.json">PostmanCollection</a>
