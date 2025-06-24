@@ -2,21 +2,21 @@
 
 A simple **URL Shortener API** built using **Node.js, Express, and MongoDB**, allowing users to shorten long URLs and redirect using short links.
 
-## 🚀 Features
+## Features
 - Shorten long URLs
 - Redirect to original URLs using short links
 - Store shortened URLs in **MongoDB database**
 - RESTful API structure
 
-## 🛠️ Technologies Used
+## Technologies Used
 - **Node.js**
 - **Express.js**
 - **MongoDB**
 - **Postman** (for API testing)
 
-## 📌 Deployment on Render
+## Deployment on Render
 This project is deployed on **Render**. You can access the API at: <a href="https://url-shorten-1-volr.onrender.com">https://url-shorten-1-volr.onrender.com</a>
 
-## 📬 Postman Collection
+## Postman Collection
 You can test the API using Postman with the collection provided:
 🔗<b>Collection</b> : <a href="https://raw.githubusercontent.com/Saiee-phadatare/Url-Shorten/refs/heads/main/url-short.postman_collection.json">PostmanCollection</a>
